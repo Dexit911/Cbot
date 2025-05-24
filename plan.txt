@@ -1,0 +1,57 @@
+TODO:
+------------------------------------------------------------------------------------------------------------------------
+Define the goal. Should the bot make fast or stable profit?
+------------------------------------------------------------------------------------------------------------------------
+Avoid lucky performance. Test the bot on Bull, Bear and Side markets.
+------------------------------------------------------------------------------------------------------------------------
+Period time 3 - 15 months. 100 - 300 trades total.
+------------------------------------------------------------------------------------------------------------------------
+Test on different cryptos:
+BTC/USDT
+XRP/USDT
+SOL/USDT
+DOGE/USDT
+ETH/USDT
+------------------------------------------------------------------------------------------------------------------------
+Add another DataFrame that contains the tests.
+Winrate: %
+Total Profit: USDT
+Max drawdown: Peak - Low
+Number of trades: trade amount
+Profit factor: gross profit / gross loss (>1.5 = good)
+------------------------------------------------------------------------------------------------------------------------
+Test with other RSI:s
+
+STRATEGY:
+
+---M.A.C.D---
+for longer terms
+MACD Line - 12 days exponential moving average
+EMA Signal Line - 9 days exponential moving average
+ATR -
+Histogram
+Zero Line
+
+---Bollinger Bands---
+https://www.youtube.com/watch?v=Jn3P-SSCiRU
+
+Good for: Breakouts, Reversal, Pullback
+Volatility Based indicator
+Volatility - speed of price change.
+
+3 lines
+center line - 20 Period MA
+over line - +2 STD Dev
+under line - -2 STD Dev
+
+if follow a trend trading strategy - avoid narrow bands
+if trading reversals - avoid wide bands
+
+
+
+SMA - (P1 + P2 + ...)/n
+P - closing price
+n - number of periods
+
+
+
