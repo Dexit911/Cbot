@@ -1,5 +1,4 @@
 import time
-
 from config import *
 import pandas as pd
 from data_logger import CsvLogger
@@ -13,80 +12,122 @@ class TradingLogic:
     """
 
     def __init__(self, df, symbol):
+        # DATA AND TRADES
         self.df = df
-        self.symbol = symbol
-
         self.trades = []
 
-        self.rsi_period = 30
-        self.rsi_values = [42, 68]
+        # TEST
+        self.test_sectors = 10
+        # SIMULATION VALUES
+        self.symbol = symbol
 
-    def start_simulation(self, balance):
+        self.start_balance = 0
+        self.usdt = 0
+        self.crypto = 0
+        self.entry_price = 0
 
-        usdt = balance  # starting money
-        crypto = 0  # how much XRP you own
-        entry_price = None
+        # TRADING LOGIC SETTINGS
+        self.rsi_period = 20
+        self.rsi_values = [30, 70]
 
-        for i in range(RSI_PERIOD, len(self.df)):
+    def _handle_transaction(self, row, action):
+        """Handles buy and sell"""
+        price = row["Close"]
+        time = row["Close Time"]
+        if action == "BUY":
+            self.crypto = self.usdt / price
+            self.entry_price = price
+            self.usdt = 0
+            self.trades.append({
+                "type": "BUY",
+                "price": price,
+                "time": time})
+
+            # DEBUG
+            self.print_debug("BUY", [time, price])
+
+        elif action == "SELL":
+            profit = (price - self.entry_price) * self.crypto
+            self.usdt = self.crypto * price
+            self.crypto = 0
+            self.trades.append({
+                "type": "SELL",
+                "price": price,
+                "time": time,
+                "profit": profit})
+
+            # DEBUG
+            self.print_debug("SELL", [time, price, profit])
+
+            return profit
+        return None
+
+    def start_simulation(self, raw_df, start_balance):
+        """Handles the start logic"""
+        # SET THE START BALANCE
+        self.start_balance = start_balance
+        # MAKE SUE TO NOT CHANGE ORIGINAL
+        df = raw_df.copy()
+        # CREATE SECTORS FOR TEST
+        test_sectors = self.create_test_sectors(df)
+        whole_sector = df
+        # RUN TEST ON WHOLE SECTOR (ALL CANDLES)
+        self.simulate(whole_sector)
+        # RUN TEST ON SECTORS
+        for sector in test_sectors:
+            self.simulate(sector)
+
+    def simulate(self, sector):
+        """Runs the simulation, all trading happens here"""
+
+        self.df = sector["df"]
+        self.usdt = self.start_balance  # starting money
+        self.crypto = 0  # how much XRP you own
+        self.entry_price = None
+
+        # START TRADING
+        for i in range(self.rsi_period, len(self.df)):
             row = self.df.iloc[i]
-            current_price = row["Close"]
-            current_time = row["Close Time"]
             rsi = row["RSI"]
+            if rsi < self.rsi_values[0] and self.crypto == 0:
+                self._handle_transaction(row, "BUY")
+            elif rsi > self.rsi_values[1] and self.crypto > 0:
+                self._handle_transaction(row, "SELL")
 
-            if rsi < self.rsi_values[0] and crypto == 0:
-                # BUY
-                crypto = usdt / current_price
-                entry_price = current_price
-                usdt = 0
+        # PERFORM THE END
+        self.end_simulation()
 
-                # DOCUMENT THE BUY TRADE
-                self.trades.append({
-                    "type": "BUY",
-                    "price": current_price,
-                    "time": current_time})
-                print(f"[{current_time}] BUY at {current_price:.4f}")
-
-            elif rsi > self.rsi_values[1] and crypto > 0:
-                # SELL
-                usdt = crypto * current_price
-                profit = usdt - (entry_price * crypto)
-                crypto = 0
-
-                # DOCUMENT THE SELL TRADE
-                self.trades.append({
-                    "type": "SELL",
-                    "price": current_price,
-                    "time": current_time,
-                    "profit": profit})
-                print(f"[{current_time}] SELL at {current_price:.4f} | Profit: {profit:.2f} | Balance: {usdt:.2f} USDT")
-
-        # GET END MONEY RESULT
-        usdt = crypto * self.df["Close"].iloc[-1]  # End money
-        total_profit = usdt - balance  # The profit of the test
-        print(f"balance: {balance}, USDT: {usdt}")  # Debug
-
-
+    def end_simulation(self):
+        """Saves data, performs end logic if needed"""
+        last_trade = self.trades[-1] if self.trades else None
+        if last_trade and last_trade["type"] == "BUY":
+            # IF LAST WAS BUY -> SELL -> GET PROFIT
+            self.usdt = self.crypto * self.df["Close"].iloc[-1]
+            total_profit = self.usdt - self.start_balance
+        else:
+            # IF LAST WAS SELL -> GET PROFIT
+            total_profit = self.usdt - self.start_balance
         # SAVE DATA
         data = self.get_trade_stats(total_profit)
         CsvLogger.save_test_result("test_trades.csv", data)
+        # DEBUG
+        self.print_debug("END")
+        # CLEAR TRADES FOR NEXT SIMULATION
+        self.trades.clear()
 
-        return round(usdt, 2)  # Return the USDT amount
-
-    def get_trade_stats(self, total_profit):
+    def get_trade_stats(self, total_profit) -> dict:
         sell_trades = [t for t in self.trades if t["type"] == "SELL"]  # List with sell trades
         wins = [t for t in sell_trades if t["profit"] > 0]  # How many sell trades are profit
         losses = [t for t in sell_trades if t["profit"] <= 0]  # How many sell trades are loose
         total_trades = len(wins) + len(losses)  # Total trades maked
-
         win_rate = (len(wins) / total_trades) * 100 if total_trades > 0 else 0  # Get win rate in %
-        #total_profit = sum(t["profit"] for t in self.trades if t["type"] == "SELL")  # Not working for some reason
 
+        print(f"wins: {len(wins)}, losses: {len(losses)}, total trades: {total_trades}")
+        print(f"win_rate: {win_rate}")
 
         gross_profit = sum(t["profit"] for t in wins)  # How many USDT did you go profit
         gross_loss = abs(sum(t["profit"] for t in losses))  # How many USDT you lost
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")  # Profit factor can be infinity
-
-        self.trades.clear()  # Empty the trade list for the next test
 
         return {  # return the data
             "Crypto": self.symbol,
@@ -103,7 +144,7 @@ class TradingLogic:
 
     """RSI"""
 
-    def calculate_rsi(self, close_prices):
+    def calculate_rsi(self, close_prices) -> int:
         """Calculate RSI with given period and close prices"""
         period = self.rsi_period
         delta = close_prices.diff()
@@ -118,3 +159,44 @@ class TradingLogic:
     def apply_rsi_indicator(self):
         """Apply RSI to the DataFrame"""
         self.df["RSI"] = self.calculate_rsi(self.df["Close"])
+
+    """TEST ZONE"""
+
+    def create_test_sectors(self, df) -> list:
+        """Create test segments for better analysis"""
+
+        segments = []  # Store all segments
+        total_candles = len(df)  # Get the total candles
+
+        sector_len = int(total_candles / self.test_sectors)  # How big the sector going to be
+        for sector in range(self.test_sectors):  # Create segments and store Dataframes in a list
+            start = sector * sector_len
+            end = start + sector_len
+            if end > total_candles:
+                break
+            segment_df = df.iloc[start:end].copy()
+            segments.append({
+                "df": segment_df,
+                "candles": (start, end)
+            })
+        return segments[::-1]  # Flip for better visualization, return the list
+
+    def print_debug(self, action: str, values: list = None) -> print:
+        match action:
+            case "END":
+                print(f"\nstart balance: {self.start_balance},"
+                      f" current USDT: {self.usdt},"
+                      f" RSI PERIOD: {self.rsi_period},"
+                      f" RSI VALUES: {self.rsi_values}\n")
+            case "BUY":
+
+                print(f"[{values[0]}] BUY at {values[1]:.4f}")
+
+            case "SELL":
+                print(
+                    f"[{values[0]}] SELL at {values[1]:.4f} | Profit: {values[2]:.2f} | Balance: {self.usdt:.2f} USDT")
+
+
+class TestRunner:
+    def __init__(self, df, sectors, strategy, symbol):
+

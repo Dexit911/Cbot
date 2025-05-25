@@ -19,9 +19,41 @@ Total Profit: USDT
 Max drawdown: Peak - Low
 Number of trades: trade amount
 Profit factor: gross profit / gross loss (>1.5 = good)
-------------------------------------------------------------------------------------------------------------------------
-Test with other RSI:s
 
+Out of sample testing, make a test with around 200 days, and devide in sectors. Define Bull, Bear  and side trends.
+Look for coralation.
+Detect overfitting and consistency.
+
+Add another Data zone for tests
+One test is structured as:
+1 big test
+10 sliced test out of sample
+
+every test is structured as:
+Chart tag, chart png,
+
+tests/
+    EXAMPLE_TEST__DATE/
+        -summary.csv <- all 11 tests with basic data + chart png. For fast reading
+        -config.json/ <- all data, settings, and information
+            - full_test/
+                -chart.png
+                -stats.json
+            - slice_1/
+                -chart.png
+                -stats.json
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
 STRATEGY:
 
 ---M.A.C.D---
