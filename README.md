@@ -1,4 +1,4 @@
-This is a Python-based bot for simulating crypto trades using historical data.
+ This is a Python-based bot for simulating crypto trades using historical data.
 Used to develop and test strategies.
 
 It calculates how much you would gain or lose by trading different cryptocurrencies.

@@ -79,8 +79,8 @@ class TradingLogic:
 
     def simulate(self, sector):
         """Runs the simulation, all trading happens here"""
-
-        self.df = sector["df"]
+        print(sector)
+        self.df = sector
         self.usdt = self.start_balance  # starting money
         self.crypto = 0  # how much XRP you own
         self.entry_price = None
@@ -175,10 +175,8 @@ class TradingLogic:
             if end > total_candles:
                 break
             segment_df = df.iloc[start:end].copy()
-            segments.append({
-                "df": segment_df,
-                "candles": (start, end)
-            })
+            segments.append(segment_df)
+
         return segments[::-1]  # Flip for better visualization, return the list
 
     def print_debug(self, action: str, values: list = None) -> print:
@@ -199,4 +197,5 @@ class TradingLogic:
 
 class TestRunner:
     def __init__(self, df, sectors, strategy, symbol):
+        pass
 
