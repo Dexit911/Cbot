@@ -4,8 +4,9 @@ from config import *
 import pandas as pd
 from data_logger import DataManager
 import strategies_config as sc
-
 from data_logger import DataCalculator as Dc
+
+from abc import ABC, abstractmethod
 
 """
 STRATEGY SETTINGS
@@ -39,8 +40,8 @@ class IndicatorManager:
             match name:
                 case "RSI":
                     self.apply_rsi(**params)
-                case "MACD":
-                    self.apply_macd(**params)
+                case "BB":
+                    self.apply_bollinger(**params)
 
     def apply_rsi(self, **kwargs) -> None:
         """Calculates and applies the rsi into DataFrame"""
@@ -54,11 +55,21 @@ class IndicatorManager:
         rs = avg_gain / avg_loss
         self.df["RSI"] = 100 - (100 / (1 + rs))
 
-    def apply_macd(self, **kwargs) -> None:
-        pass
+    def apply_bollinger(self, **config) -> None:
+        """
+        Bollinger bands is used to understand market mood (volatility), it has three indicators:
+        Trend line: SMA - simple moving average.
+        Upper band: SMA + StandardDeviation * multiplier. If the price goes over it: likely overbought.
+        Upper band: SMA - StandardDeviation * multiplier. If the price goes under it: likely oversold.
 
-    def apply_bollinger(self, **kwargs) -> None:
-        pass
+        :param config: dict with strategy settings
+        """
+        period = config.get("period", 20)
+        std_multi = config.get("std", 2)
+        self.df["BB_Mid"] = self.df["Close"].rolling(window=period).mean()  # Trend baseline
+        self.df["BB_Std"] = self.df["Close"].rolling(window=period).std()  # Standard deviation
+        self.df["BB_Upper"] = self.df["BB_Mid"] + self.df["BB_Std"] * std_multi  # Overbought threshold line
+        self.df["BB_Lower"] = self.df["BB_Mid"] - self.df["BB_Std"] * std_multi  # Oversold threshold line
 
 
 class BaseStrategy:
@@ -66,19 +77,31 @@ class BaseStrategy:
         self.config = config
 
     def apply_indicators(self, df: pandas.DataFrame) -> None:
-        """Applies indicators to the raw DataFrame"""
+        """
+        Applies indicators to the raw candle DataFrame
+        :param df: DataFrame in csv reformat form
+        """
+
         indicators = self.config["indicators"]
         IndicatorManager(df).apply(indicators)
 
-    def generate_signal(self, row, has_position) -> str:
-        """Here does logic comes in. Let the child class decide"""
-        pass
+    @abstractmethod
+    def generate_signal(self, sector_df: pd.DataFrame, i: int, has_position: bool) -> str:
+        """
+        To be used or overridden in child classes only.
+        :param sector_df: DataFrame on a whole sector with candles
+        :param i: int index. Are we on the 100th candle? i = 100.
+        :param has_position: bool that affects the decision of buy or sell
+        :return: str signal "BUY" or "SELL", based on the given logic
+        """
+        raise NotImplementedError("This method should be overridden by subclasses.")
 
     @staticmethod
     def choose_strategy(strategy_id: str):
         """Choose strategy based on id"""
         strategies = {
             "RSIStrategy": RSIStrategy,
+            "RSIBB": RSIBB
         }
         return strategies.get(strategy_id)
 
@@ -87,24 +110,52 @@ class RSIStrategy(BaseStrategy):
     def __init__(self, config):
         super().__init__(config)
         """
-        PARAMS FOR STRATEGY
+        Params from config:
         rsi_buy: the lower index for buy
         rsi_sell: the higher index for sell
+        note: rsi_buy + rsi_sell are always 100 not lower now higher
         """
 
-    def generate_signal(self, row, has_position) -> str:
+    def generate_signal(self, sector_df: pd.DataFrame, i: int, has_position: bool) -> str:
         """Small logic for buy and sell with RSI index"""
-        # GET THE LOGIC SETTINGS
+        # GET LOGIC SETTINGS
         params = self.config["params"]
         buy_index = params["rsi_buy"]
         sell_index = params["rsi_sell"]
         # SETTING OUT CONDITIONS
-        rsi = row["RSI"]
+        rsi = sector_df.iloc[i]["RSI"]
         if rsi < buy_index and not has_position:
             return "BUY"
         elif rsi > sell_index and has_position:
             return "SELL"
         return "HOLD"
+
+
+class RSIBB(BaseStrategy):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def generate_signal(self, sector_df: pd.DataFrame, i: int, has_position: bool) -> str:
+        """
+        Logic: If the last price is under RSI the low index and under the lower line in BB. And the current is back
+        above the lower line -> "BUY".
+        Same logic for "SELL" but in reverse.
+        """
+        # GET LOGIC SETTINGS
+        params = self.config["params"]
+        rsi_buy = params["rsi_buy"]
+        rsi_sell = params["rsi_sell"]
+        look_back = params["bb_candle_lookback"]
+
+        current_candle = sector_df.iloc[i]
+        before_candle = sector_df.iloc[i - look_back]
+
+        if before_candle["Close"] < before_candle["BB_Lower"] and before_candle["RSI"] < rsi_buy:
+            if current_candle["Close"] > current_candle["BB_Lower"] and not has_position:
+                return "BUY"
+        if before_candle["Close"] > before_candle["BB_Upper"] and before_candle["RSI"] > rsi_sell:
+            if current_candle["Close"] < current_candle["BB_Upper"] and has_position:
+                return "SELL"
 
 
 class TestRunner:
@@ -180,7 +231,7 @@ class TestRunner:
 
         for i in range(len(sector_df)):
             row = sector_df.iloc[i]
-            signal = self.strategy.generate_signal(row, self.has_position)
+            signal = self.strategy.generate_signal(sector_df, i, self.has_position)
             self._make_transaction(row, signal)
 
         self.end_simulation(sector_dict)

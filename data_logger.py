@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import json
+from visualizer import GraphVision
 
 
 class DataManager:
@@ -52,8 +53,7 @@ class DataManager:
             df.to_csv(sector_data_path, index=False)
 
             # SAVE CHART PNG
-            with open(sector_chart_path, "w") as f:
-                pass
+            #GraphVision.save_chart(df, sector_chart_path) # PROBLEMS IN GraphVision
 
         print("**SAVED DATA** ")
 

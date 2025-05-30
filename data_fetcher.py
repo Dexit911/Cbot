@@ -65,15 +65,7 @@ class BinanceFetcher:
             df[column] = pd.to_datetime(df[column], unit="ms")  # from ms to date time
         return df
 
-    @staticmethod
-    def mpf_reformat(raw_df) -> pandas.DataFrame:
-        """Makes DataFrame ready for mpf"""
-        df = raw_df.copy()  # Make a copy
-        df["Open Time"] = pd.to_datetime(df["Open Time"], unit="ms")  # Convert Open time from ms -> date time
-        df = df.set_index("Open Time")  # Set the Datetime as index for plotting
-        df.index.name = "Date"  # Change the name
-        df = df[["Open", "High", "Low", "Close", "Volume"]].astype(float)  # Save DataFrame with values needed for mpf
-        return df
+
 
     @staticmethod
     def interval_to_milliseconds(limit, interval):

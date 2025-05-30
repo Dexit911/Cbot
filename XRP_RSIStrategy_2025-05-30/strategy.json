@@ -1,0 +1,14 @@
+{
+  "indicators": [
+    {
+      "name": "RSI",
+      "params": {
+        "period": 15
+      }
+    }
+  ],
+  "params": {
+    "rsi_buy": 30,
+    "rsi_sell": 70
+  }
+}

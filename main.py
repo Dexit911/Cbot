@@ -2,7 +2,6 @@ import time
 from data_fetcher import BinanceFetcher as Bf
 from indicators import TestRunner, BaseStrategy, RSIStrategy
 from config import CRYPTO_LIST
-from window import CandleChart
 
 """SIMULATION ONLY TAKES CSV FORMAT DATA!!!!!"""
 

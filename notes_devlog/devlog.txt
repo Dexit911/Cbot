@@ -78,13 +78,34 @@ Do I need to make up another class for saving files?
 30.05.2025
 Plans:
 Remove some data for showcase.
-Define sectors label and add it to sector data. Label ex: Bull, Bear and side.
-Add signals and visual representation of trades on candle charts.
-Start working on bollinger bands indicators.
+Define sector labels and add them to sector data. Labels: Bull, Bear, and Side.
+Start working on Bollinger Bands indicators.
 
 Work thoughts:
-I shall remove all calculation logic from the test class. I also started with writing mini documentation about every
-method and function.
+I will remove all calculation logic from the test class. I also started writing mini-documentation
+for every method and function.
+There is no need to create an individual strategy using only Bollinger Bands — I should begin by combining RSI and Bollinger Bands.
+The RSI + BB strategy is only suitable for sideways markets. I should only activate it if the current market label is sideways.
+The question is: how do I properly define the trend/label?
+New indicators and logic introduce new data points, e.g., volatility.
+Should I always include volatility in every sector's CSV, or only add it if the logic uses volatility?
+
+Progress and solved problems:
+*Comments – I started adding :param and :return docstrings to almost every method.
+*GraphVision class – Contains static methods for saving graph PNGs and formatting raw DataFrame data to mpf format.
+    *Problem – I’m not passing raw candle data! I'm considering adjusting the PNG creation method for DataFrames already in CSV format.
+*DataCalculator class update – A new method calculates the sector trend using linear regression.
+    *Problem – The method is currently too strict and needs tuning.
+*Data showcase update – I removed unnecessary data from summary.csv and data.csv for a cleaner appearance.
+*New trading algorithm – Created a new class RSIBB. For now, it only works properly in sideways markets.
+    *Sideways market logic trades on Bollinger Bands with RSI confirmation.
+
+Plans:
+Fix the mentioned bugs.
+Upgrade the RSIBB strategy with an additional indicator.
+Create a new .txt file to summarize and analyze results. Move all my strategy study notes there.
+
+commit:
 
 
 
