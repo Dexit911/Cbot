@@ -2,8 +2,10 @@ import time
 import pandas
 from config import *
 import pandas as pd
-from data_logger import CsvLogger
+from data_logger import DataManager
 import strategies_config as sc
+
+from data_logger import DataCalculator as Dc
 
 """
 STRATEGY SETTINGS
@@ -127,16 +129,18 @@ class TestRunner:
         self.symbol = symbol
         self.start_balance = start_balance
         self.test_sectors = test_sectors
-
         self.sectors = []  # dict -> df, start_index, end_index, label. These are going in the simulation as test samples
 
         # VALUES USED IN SIMULATION
         self.usdt = 0
         self.crypto = 0
         self.entry_price = 0
-
+        self.has_position = False
         self.trades = []
         self.strategy = None
+        self.balances = []
+
+        self.results = []  # List with dicts about every sector + whole sector
 
     def start_simulation(self):
         """Prepares attributes for simulation"""
@@ -145,10 +149,16 @@ class TestRunner:
         self.strategy = BaseStrategy.choose_strategy(self.strategy_id)(config)  # Pick the strategy
         self.strategy.apply_indicators(df)  # Apply needed indicators
 
+        # CLEAN TRADE LIST
+        self.trades.clear()
+
         # SECTOR GENERATION
         self.sectors = self.create_sectors(df, 14)
         for sector in self.sectors:
             self.simulate(sector)
+
+        DataManager(self.results).save_results()  # Save results
+        self.results.clear()  # Clear results
 
     def simulate(self, sector: dict) -> None:
         """
@@ -160,37 +170,46 @@ class TestRunner:
         sector_dict = sector
         sector_df = sector_dict["df"]
 
-        has_position = False
-
+        # RESET THE VALUES
         self.usdt = self.start_balance  # starting money
         self.crypto = 0  # how much XRP you own
         self.entry_price = None
         self.trades = []
+        self.has_position = False
+        self.balances = [self.start_balance]
 
         for i in range(len(sector_df)):
             row = sector_df.iloc[i]
-            signal = self.strategy.generate_signal(row, has_position)
+            signal = self.strategy.generate_signal(row, self.has_position)
             self._make_transaction(row, signal)
 
         self.end_simulation(sector_dict)
 
     def end_simulation(self, sector_dict: dict) -> None:
-        """Saves data, performs end logic if needed, get things ready to next test"""
+        """
+        Saves data, performs end logic if needed, get things ready to next test
+        :param sector_dict:
+        """
         sector_df = sector_dict["df"]
 
         if self.crypto > 0:
             last_price = sector_df["Close"].iloc[-1]
             self._make_transaction({"Close": last_price, "Close Time": "Auto Sell"}, "SELL")
 
+        # PACK ALL RESULTS DATA IN LIST -> SEND TO DATAMANAGER
         data = self.calculate_data(sector_dict)
-        CsvLogger.save_test_result("test_logger.csv", data)
-        self.trades.clear()
+        self.results.append(data)
 
     def _make_transaction(self, row, signal):
-        """Handles Buy and Sell in the simulation"""
+        """
+        Handles Buy and Sell in simulation
+        :param row: dict with candle data
+        :param signal: str that can be "BUY", "SELL".
+        """
         price = row["Close"]
         time = row["Close Time"]
         if signal == "BUY":
+            self.has_position = True
             self.crypto = self.usdt / price
             self.entry_price = price
             self.usdt = 0
@@ -200,8 +219,10 @@ class TestRunner:
                 "time": time})
 
         elif signal == "SELL":
+            self.has_position = False
             profit = (price - self.entry_price) * self.crypto
             self.usdt = self.crypto * price
+            self.balances.append(self.usdt)
             self.crypto = 0
             self.trades.append({
                 "type": "SELL",
@@ -242,7 +263,11 @@ class TestRunner:
         return sectors[::-1]  # Flip for better visual
 
     def calculate_data(self, sector_dict) -> dict:
-        """Calculates data about every sector"""
+        """
+        Calculates and returns data about a sector
+        :param sector_dict: dict with sector data
+        :return: dict with all test results about a sector
+        """
         df = sector_dict["df"]
         crypto = self.symbol
         sell_trades = [t for t in self.trades if t["type"] == "SELL"]  # List with sell trades
@@ -256,18 +281,29 @@ class TestRunner:
         total_profit = round(self.usdt - self.start_balance, 2)  # How much did you earn/lose on the whole test
         candle_array = sector_dict["start_index"], sector_dict["end_index"]
         days = round(len(df) * 15 / 60 / 24, 2)  # How days the simulation go back
-        date = f"{pd.Timestamp.now()}"[:-7]  # Current time of the test
+        date = f"{pd.Timestamp.now()}"[:-16]  # Current time of the test
+        strategy_config = sc.STRATEGIES[self.strategy_id]
+        trend = Dc.define_trend(df["Close"])  # Define the of current sector
 
-        print(f"wins: {len(wins)}, losses: {len(losses)}, total trades: {total_trades}")
-        print(f"win_rate: {win_rate}")
+        # DEBUG
+        print(f"\n\n----------CANDLE ARRAY: {candle_array}----------\n"
+              f"Start balance: {self.start_balance}\n"
+              f"Total profit: {total_profit}\n"
+              f"Win rate: {win_rate}\n"
+              f"Profit factor: {profit_factor}\n"
+              f"------------------------------------------")
 
         return {
-            "Crypto": crypto,
-            "Win Rate (%)": win_rate,
-            "Total profit": total_profit,
-            "Candle array": candle_array,
-            "Total trades": total_trades,
-            "Days": days,
-            "Profit Factor": profit_factor,
-            "Date": date,
+            "Crypto": crypto,  # str
+            "Strategy": self.strategy_id,  # str
+            "Strategy config": strategy_config,  # dict
+            "Win rate(%)": win_rate,  # float
+            "Total profit": total_profit,  # float
+            "Balance history": self.balances,  # list
+            "Candle array": candle_array,  # tuple
+            "Total trades": total_trades,  # int
+            "Profit factor": profit_factor,  # float
+            "Days": days,  # float
+            "Date": date,  # str
+            "Trend": trend
         }

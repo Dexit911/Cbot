@@ -7,7 +7,7 @@ class CandleChart:
         self.title = title
         self.candles = len(df)
 
-    def start(self):
+    def save(self):
         df = self.df
         candles = self.candles
 
@@ -19,18 +19,4 @@ class CandleChart:
         print(df)
 
         mpf.plot(self.df, type=chart, volume=True, style="charles", title=self.title)
-
-
-
-import random
-question = input("Your question: ")
-answers = ["answ1", "answ2", "answ3", "answ4"]
-random_answer = random.choice(answers)
-print("Question: ", question)
-print("Answer: ", random_answer)
-
-
-apples = 10
-
-
 

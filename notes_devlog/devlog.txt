@@ -1,0 +1,99 @@
+
+26.05.2025
+Problems:
+With time, my code started to look messy. The class itself did not handle the right things. My TradingLogic was handling
+too much stuff in same place, I needed to separate testing ground, indicators, and algorithms.
+
+Thoughts:
+I need a setup that is easy to use. I want to be able to add new strategies without changing the test ground. I want the
+strategies decide which indicators should be applied to the base DataFrame. I want the test ground to be easy adjustable.
+
+Saving Data:
+So much data needs to be extracted its crazy. I am thinking about moving the calculation of data in separate place.
+And I came upp with a new idea how to structure the results.
+Structure example:
+
+Test_name/
+    summary.csv   <- Here we have base information about the overall test.
+    full_sector/  <- We also have information about every sector for deeper understanding.
+        data.csv  <- Contains all the parameters of the test.
+        chart.png <- Picture of a chart for visual understanding, mpf format.
+    sector1/
+        data.csv
+        chart.png
+    ...
+
+Solved:
+After a lot of work, I am almost done with the new architecture for my testing engine. Today my project got a new shape.
+New classes:
+TestRunner() - Runs the simulation with given data and strategies. Very adjustable attributes.
+BaseStrategy() - A parent class for all future trading logic. Sets up settings for algorithms with given config
+RSIstrategy() - Algorithm based on RSI indicators with adjustable settings.
+IdicatorManager() - applies indicators to Dataframe based on params from the same config that strategy uses
+------------------------------------------------------------------------------------------------------------------------
+
+27.05.2025
+Plans:
+The new system has a lot of bugs, so today I am trying to make it work properly. A lot of debugging!
+Thinking about adding more error handling for a safer environment, with prints and other stuff.
+
+Todo:
+*Define sectors' trend – bull, bear, side.
+*Start with Bollinger Bands strategy, make a deeper research into the formula and how to use it.
+*Combine Bollinger Bands with RSI. Make them support each other.
+*Start working on the data structure and MAYBE make a new class for that.
+
+Solved:
+It was a very big surprise for me that my new code had only one bug! So now I have a fully working and adjustable
+testing environment. Today I started working on structuring data and saving it. I created a new class: DataManager. It
+handles all data saving by getting only a list with sector results. The file saving itself is done. The hardest part
+is data calculation. My solution is another class for calculation: DataCalculator, which only contains static calculation
+methods.
+
+Work thoughts:
+I am always trying to make the code readable and commented, because I know that in some time, the data manager is going
+to get an upgrade. I am messing up attributes and variable names. Naming needs to have rules and be more strict — this
+project is getting big. So I need to put some visual standards in place for my code.
+
+Problem to solve for next time:
+I found out that some calculations need data that I am not passing to DataManager. I need to find some way to get it
+without messing up the clean logic. Maybe I will adjust the data that my testing ground is sending. I still
+haven’t made another indicator. As soon as I am done with data managing, I am going to start training my bot.
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+28.05.2025
+What was done:
+I got done with DataManager, what it does: Structures the data, saves the results for every test.
+New class: DataCalculator, some static methods for simple calculation.
+I removed: CsvLogger, felt like it was not neccesary. Maybe I am going to bring it back later.
+
+Thoughts:
+Does the DataManager handles right things? Do I do it in the right way?
+Do I need to make up another class for saving files?
+------------------------------------------------------------------------------------------------------------------------
+
+
+30.05.2025
+Plans:
+Remove some data for showcase.
+Define sectors label and add it to sector data. Label ex: Bull, Bear and side.
+Add signals and visual representation of trades on candle charts.
+Start working on bollinger bands indicators.
+
+Work thoughts:
+I shall remove all calculation logic from the test class. I also started with writing mini documentation about every
+method and function.
+
+
+
+
+
+
+
+
+
+
+
+
