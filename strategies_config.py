@@ -1,3 +1,4 @@
+
 STRATEGIES = {
     "RSIStrategy": {
         "indicators": [
@@ -29,3 +30,4 @@ STRATEGIES = {
         }
     }
 }
+

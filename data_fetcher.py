@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 from config import *
 import time
-
+import random
 
 class BinanceFetcher:
     def __init__(self, symbol="BTCUSDT", interval="15m"):
@@ -65,8 +65,6 @@ class BinanceFetcher:
             df[column] = pd.to_datetime(df[column], unit="ms")  # from ms to date time
         return df
 
-
-
     @staticmethod
     def interval_to_milliseconds(limit, interval):
         unit = interval[-1]
@@ -78,3 +76,4 @@ class BinanceFetcher:
         elif unit == 'd':
             return amount * 24 * 60 * 60 * limit
         raise ValueError("Unsupported interval format")
+

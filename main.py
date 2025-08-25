@@ -7,14 +7,14 @@ from config import CRYPTO_LIST
 
 
 def test():
-    symbol = "XRPUSDT"
-    df = Bf(symbol=symbol).get_data(20000)
+    symbol = "BTCUSDT"
+    df = Bf(symbol=symbol).get_data(20000)   #
     csv_format = Bf.csv_reformat(df)
 
     # CREATE AND SET TESTRUNNER
     test_field = TestRunner(
         df=csv_format,
-        strategy_id="RSIStrategy",
+        strategy_id="RSIBB",
         symbol=symbol,
         start_balance=1000,
         test_sectors=10
@@ -22,6 +22,5 @@ def test():
 
     # START THE SIMULATION
     test_field.start_simulation()
-
 
 test()
