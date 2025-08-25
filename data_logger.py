@@ -52,8 +52,8 @@ class DataManager:
             df = self.create_sector_table(i)
             df.to_csv(sector_data_path, index=False)
 
-            # SAVE CHART PNG & SCRIPT
-            GraphVision.save_chart(self.result_list[i], sector_folder_path)  # PROBLEMS IN GraphVision
+            # SAVE CHART PNG
+            #GraphVision.save_chart(df, sector_chart_path) # PROBLEMS IN GraphVision
 
         print("**SAVED DATA** ")
 
@@ -85,10 +85,7 @@ class DataManager:
         """
         sector = self.result_list[sector_index]
         df = pd.DataFrame([sector])
-        df.drop(columns=[
-            "Strategy", "Strategy config",
-            "Date", "Candles", "Balance history",
-            "Strategy config"])  # Remove some columns
+        df.drop(columns=["Strategy", "Strategy config", "Date"])  # Remove some columns
         return df
 
 
@@ -172,7 +169,7 @@ class DataCalculator:
         pass
 
     @staticmethod
-    def define_trend(candles, threshold=0.0001):
+    def define_trend(candles, threshold=0.01):
         """
         :param candles: list of dicts with "Close" prices (or a DataFrame column)
         :param threshold: slope limit to classify as sideways

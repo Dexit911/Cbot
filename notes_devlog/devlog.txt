@@ -105,38 +105,7 @@ Fix the mentioned bugs.
 Upgrade the RSIBB strategy with an additional indicator.
 Create a new .txt file to summarize and analyze results. Move all my strategy study notes there.
 
-commit: 0.2.1v
-
-------------------------------------------------------------------------------------------------------------------------
-
-
-
-31.05.2025
-
-Progress:
-* GraphVision class - after adjusting mpf reformat method. Tt is now succeseful generating
-a chart png with all indicators needed.
-
-* mplfinance - almost a pro at it by now.
-*
-
-Problems:
-When creating trade markers in GraphVision -> get_trade_markers method, I got problem with creating a valid list for
-mplfinance plotting with scatter type. My first version of the list was:
-buy_signals = [None, None, float, None, float]. None represented: no buy signal on the current time index.
-Float represented: buy price on current time index. mpl did not like it for some reason, tho the documentation
-says I can pass such list but only if it contains any floats. My first thought was that my list did not have any signals.
-But no, it was not the case. After some hours and tries, I came upp with another solution. Docs said I can pass a list
-or a pd.Series. AND IT WORKED! Now I have very visible markers that that represented transactions, BB and RSI!
-
-This was all good until I tried to generate a picture with 20000 candles. To much data was causing data markers to be
-extra narrow. I could not see and anylise the results. I tried to play with resolution and scale, but that did not help.
-
-Ideas/Plans:
-GraphVision class: Make it save a png with overall market overlook, and generate a script that lets you inspect the chart.
-I am planing to add create_inspect_script() into the GraphVision class that returns a fstring with all code.
-Use it in DataManager -> save_results() write it down in a py file.
-
+commit:
 
 
 

@@ -232,7 +232,7 @@ class TestRunner:
         for i in range(len(sector_df)):
             row = sector_df.iloc[i]
             signal = self.strategy.generate_signal(sector_df, i, self.has_position)
-            self._make_transaction(row, signal, i)
+            self._make_transaction(row, signal)
 
         self.end_simulation(sector_dict)
 
@@ -245,19 +245,17 @@ class TestRunner:
 
         if self.crypto > 0:
             last_price = sector_df["Close"].iloc[-1]
-
             self._make_transaction({"Close": last_price, "Close Time": "Auto Sell"}, "SELL")
 
         # PACK ALL RESULTS DATA IN LIST -> SEND TO DATAMANAGER
         data = self.calculate_data(sector_dict)
         self.results.append(data)
 
-    def _make_transaction(self, row, signal, i: int = 0):
+    def _make_transaction(self, row, signal):
         """
         Handles Buy and Sell in simulation
         :param row: dict with candle data
         :param signal: str that can be "BUY", "SELL".
-        :param i: trade index, i=10 -> the trade happened on 10th candle
         """
         price = row["Close"]
         time = row["Close Time"]
@@ -269,8 +267,7 @@ class TestRunner:
             self.trades.append({
                 "type": "BUY",
                 "price": price,
-                "time": time,
-                "index": i})
+                "time": time})
 
         elif signal == "SELL":
             self.has_position = False
@@ -282,8 +279,7 @@ class TestRunner:
                 "type": "SELL",
                 "price": price,
                 "time": time,
-                "profit": profit,
-                "index": i})
+                "profit": profit})
 
     def create_sectors(self, ind_df, lookback=0) -> list:
         """Creates and return list with test sectors
@@ -320,7 +316,7 @@ class TestRunner:
     def calculate_data(self, sector_dict) -> dict:
         """
         Calculates and returns data about a sector
-        :param sector_dict: dict with candle data
+        :param sector_dict: dict with sector data
         :return: dict with all test results about a sector
         """
         df = sector_dict["df"]
@@ -360,7 +356,5 @@ class TestRunner:
             "Profit factor": profit_factor,  # float
             "Days": days,  # float
             "Date": date,  # str
-            "Trend": trend,
-            "Candles": df,
-            "Trades": self.trades
+            "Trend": trend
         }

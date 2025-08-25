@@ -43,17 +43,6 @@ tests/
                 -chart.png
                 -stats.json
 ------------------------------------------------------------------------------------------------------------------------
-Data structure reminder:
-
-candles df (pd.DataFrame) csv format - in test
-
-indicator column names in candles df:
-"RSI"
-"BB_Mid"
-"BB_STD"
-"BB_Upper"
-"BB_Lower"
-------------------------------------------------------------------------------------------------------------------------
 STRATEGY:
 
 ---M.A.C.D---
@@ -84,17 +73,6 @@ if trading reversals - avoid wide bands
 SMA - (P1 + P2 + ...)/n
 P - closing price
 n - number of periods
-
-
-
-VWAP
-It updates with every new candle, weighting the price by how much was traded.
-Above VWAP = bullish → traders paying more than average
-Below VWAP = bearish → traders selling cheaper than average
-
-MFI
-price + volume RSI
-volume-weighted RSI”
 
 
 
