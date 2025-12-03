@@ -14,7 +14,7 @@ def test():
     # CREATE AND SET TESTRUNNER
     test_field = TestRunner(
         df=csv_format,
-        strategy_id="RSIStrategy",
+        strategy_id="MA",
         symbol=symbol,
         start_balance=1000,
         test_sectors=10

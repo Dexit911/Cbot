@@ -42,6 +42,10 @@ class IndicatorManager:
                     self.apply_rsi(**params)
                 case "BB":
                     self.apply_bollinger(**params)
+                case "MA":
+                    self.apply_ma(**params)
+                case "VWAP":
+                    self.apply_vwap(**params)
 
     def apply_rsi(self, **kwargs) -> None:
         """Calculates and applies the rsi into DataFrame"""
@@ -71,6 +75,32 @@ class IndicatorManager:
         self.df["BB_Upper"] = self.df["BB_Mid"] + self.df["BB_Std"] * std_multi  # Overbought threshold line
         self.df["BB_Lower"] = self.df["BB_Mid"] - self.df["BB_Std"] * std_multi  # Oversold threshold line
 
+    def apply_ma(self, **config) -> None:
+        """
+           Lägger till ett Moving Average (SMA eller EMA) i DataFrame.
+
+           :param config: dict med inställningar
+               period  -> antal candles som används för att räkna medelvärdet (default 20)
+               ma_type -> vilken typ av Moving Average som ska användas:
+                          "SMA" (Simple Moving Average) eller "EMA" (Exponential Moving Average)
+           """
+        period = config.get("period", 20)
+        ma_type = config.get("ma_type", "SMA").upper()
+        if ma_type == "EMA":
+            self.df["MA"] = self.df["Close"].ewm(span=period, adjust=False).mean()
+        else:
+            self.df["MA"] = self.df["Close"].rolling(window=period).mean()
+
+    def apply_vwap(self, **config) -> None:
+        """
+        Calculates and applies VWAP into DataFrame
+        :param config:
+        :return:
+        """
+        typical_price = (self.df["High"] + self.df["Low"] + self.df["Close"]) / 3
+        pv = typical_price * self.df["Volume"]  # price * volume
+        vwap = pv.cumsum() / self.df["Volume"].cumsum()
+        self.df["VWAP"] = vwap
 
 class BaseStrategy:
     def __init__(self, config):
@@ -101,7 +131,8 @@ class BaseStrategy:
         """Choose strategy based on id"""
         strategies = {
             "RSIStrategy": RSIStrategy,
-            "RSIBB": RSIBB
+            "RSIBB": RSIBB,
+            "MA": MAStrategy,
         }
         return strategies.get(strategy_id)
 
@@ -156,6 +187,51 @@ class RSIBB(BaseStrategy):
         if before_candle["Close"] > before_candle["BB_Upper"] and before_candle["RSI"] > rsi_sell:
             if current_candle["Close"] < current_candle["BB_Upper"] and has_position:
                 return "SELL"
+
+
+class MAStrategy(BaseStrategy):
+    def __init__(self, config):
+        super().__init__(config)
+        """
+        Params från config:
+        period: längden på MA
+        ma_type: 'SMA' eller 'EMA'
+        """
+
+    def apply_indicators(self, df: pd.DataFrame) -> None:
+        """Apply Moving Average to dataframe"""
+        super().apply_indicators(df)
+        params = self.config["params"]
+        period = params.get("period", 20)
+        ma_type = params.get("ma_type", "SMA")
+
+        if ma_type.upper() == "EMA":
+            df["MA"] = df["Close"].ewm(span=period, adjust=False).mean()
+        else:  # default SMA
+            df["MA"] = df["Close"].rolling(window=period).mean()
+
+    def generate_signal(self, sector_df: pd.DataFrame, i: int, has_position: bool) -> str:
+        """Köp om priset bryter över MA, sälj om det bryter under."""
+        if i == 0:
+            return "HOLD"
+
+        price = sector_df.iloc[i]["Close"]
+        ma_value = sector_df.iloc[i]["MA"]
+
+        # Buy condition
+        if price > ma_value and not has_position:
+            return "BUY"
+        # Sell condition
+        elif price < ma_value and has_position:
+            return "SELL"
+
+        return "HOLD"
+
+
+class VWAP(BaseStrategy):
+    pass
+
+
 
 
 class TestRunner:
@@ -245,7 +321,8 @@ class TestRunner:
 
         if self.crypto > 0:
             last_price = sector_df["Close"].iloc[-1]
-            self._make_transaction({"Close": last_price, "Close Time": "Auto Sell"}, "SELL")
+            last_time = sector_df["Close Time"].iloc[-1]
+            self._make_transaction({"Close": last_price, "Close Time": last_time}, "SELL")
 
         # PACK ALL RESULTS DATA IN LIST -> SEND TO DATAMANAGER
         data = self.calculate_data(sector_dict)
@@ -257,8 +334,9 @@ class TestRunner:
         :param row: dict with candle data
         :param signal: str that can be "BUY", "SELL".
         """
-        price = row["Close"]
+        price = round(row["Close"], 4)
         time = row["Close Time"]
+
         if signal == "BUY":
             self.has_position = True
             self.crypto = self.usdt / price
@@ -266,20 +344,22 @@ class TestRunner:
             self.usdt = 0
             self.trades.append({
                 "type": "BUY",
-                "price": price,
-                "time": time})
+                "price": round(price, 4),
+                "time": time
+            })
 
         elif signal == "SELL":
             self.has_position = False
             profit = (price - self.entry_price) * self.crypto
             self.usdt = self.crypto * price
-            self.balances.append(self.usdt)
+            self.balances.append(round(self.usdt, 2))
             self.crypto = 0
             self.trades.append({
                 "type": "SELL",
-                "price": price,
+                "price": round(price, 4),
                 "time": time,
-                "profit": profit})
+                "profit": round(profit, 2)
+            })
 
     def create_sectors(self, ind_df, lookback=0) -> list:
         """Creates and return list with test sectors
@@ -345,16 +425,19 @@ class TestRunner:
               f"------------------------------------------")
 
         return {
-            "Crypto": crypto,  # str
-            "Strategy": self.strategy_id,  # str
-            "Strategy config": strategy_config,  # dict
-            "Win rate(%)": win_rate,  # float
-            "Total profit": total_profit,  # float
-            "Balance history": self.balances,  # list
-            "Candle array": candle_array,  # tuple
-            "Total trades": total_trades,  # int
-            "Profit factor": profit_factor,  # float
-            "Days": days,  # float
-            "Date": date,  # str
-            "Trend": trend
+            "crypto": crypto,  # str
+            "strategy": self.strategy_id,  # str
+            "strategy-config": strategy_config,  # dict
+            "win-rate": win_rate,  # float
+            "total-profit": total_profit,  # float
+            "balance-history": self.balances,  # list
+            "candle-array": candle_array,  # tuple
+            "total-trades": total_trades,  # int
+            "profit-factor": profit_factor,  # float
+            "days": days,  # float33
+            "date": date,  # str
+            "trend": trend,
+
+            "candles-ind": sector_dict["df"],
+            "trades": self.trades
         }
